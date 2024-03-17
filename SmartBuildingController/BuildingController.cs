@@ -1,144 +1,221 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Text;
 
 namespace SmartBuildingController
 {
     public class BuildingController
     {
-        private string buildingID;
-        private string currentState = "out of hours";
-        private string previousState = ""; // Used for handling the 'History' state
-        private ILightManager lightManager;
-        private IFireAlarmManager fireAlarmManager;
-        private IDoorManager doorManager;
-        private IWebService webService;
-        private IEmailService emailService;
+        private string _buildingID;
+        private string _currentState;
+        private string _historyState;
+        private readonly HashSet<string> _validStates = new HashSet<string> { "closed", "out of hours", "open", "fire drill", "fire alarm" };
 
-        private readonly Dictionary<string, List<string>> stateTransitions = new Dictionary<string, List<string>>
-        {
-            { "closed", new List<string> { "out of hours" } },
-            { "out of hours", new List<string> { "open", "closed" } },
-            { "open", new List<string> { "out of hours" } },
-            // Special states that can transition from any normal state
-            { "fire drill", new List<string> { "closed", "out of hours", "open" } },
-            { "fire alarm", new List<string> { "closed", "out of hours", "open" } },
-        };
+        private ILightManager _lightManager;
+        private IFireAlarmManager _fireAlarmManager;
+        private IDoorManager _doorManager;
+        private IWebService _webService;
+        private IEmailService _emailService;
 
         public BuildingController(string id)
         {
-            buildingID = id.ToLower();
+            _buildingID = id.ToLower();
+            _currentState = "out of hours";
+            _historyState = _currentState;
         }
 
-        public BuildingController(string id, string startState)
-            : this(id) // Call the single parameter constructor
+        public BuildingController(string id, string startState) : this(id)
         {
-            // Add a null check for startState before attempting to call ToLower()
-            if (startState == null || !IsInitialStateValid(startState.ToLower()))
+            SetInitialState(startState.ToLower());
+        }
+
+        public BuildingController(
+            string id,
+            ILightManager lightManager,
+            IFireAlarmManager fireAlarmManager,
+            IDoorManager doorManager,
+            IWebService webService,
+            IEmailService emailService) : this(id)
+        {
+            _lightManager = lightManager;
+            _fireAlarmManager = fireAlarmManager;
+            _doorManager = doorManager;
+            _webService = webService;
+            _emailService = emailService;
+        }
+
+        private void SetInitialState(string startState)
+        {
+            if (startState == "closed" || startState == "out of hours" || startState == "open")
             {
-                throw new ArgumentException("BuildingController can only be initialised to 'open', 'closed', 'out of hours'");
+                _currentState = startState;
+                _historyState = _currentState;
             }
-            currentState = startState.ToLower();
+            else
+            {
+                throw new ArgumentException("Argument Exception: BuildingController can only be initialised to the following states 'open', 'closed', 'out of hours'");
+            }
         }
 
 
-        public BuildingController(string id, ILightManager iLightManager, IFireAlarmManager iFireAlarmManager,
-                                  IDoorManager iDoorManager, IWebService iWebService, IEmailService iEmailService)
-            : this(id) // Call the single parameter constructor
+        public string GetBuildingID() => _buildingID;
+
+        public void SetBuildingID(string id) => _buildingID = id.ToLower();
+
+        public string GetCurrentState() => _currentState;
+
+        public bool SetCurrentState(string newState)
         {
-            lightManager = iLightManager ?? throw new ArgumentNullException(nameof(iLightManager));
-            fireAlarmManager = iFireAlarmManager ?? throw new ArgumentNullException(nameof(iFireAlarmManager));
-            doorManager = iDoorManager ?? throw new ArgumentNullException(nameof(iDoorManager));
-            webService = iWebService ?? throw new ArgumentNullException(nameof(iWebService));
-            emailService = iEmailService ?? throw new ArgumentNullException(nameof(iEmailService));
-        }
+            newState = newState.ToLower();
 
-        public string GetBuildingID() => buildingID;
-        public string GetCurrentState() => currentState;
-
-        public void SetBuildingID(string id) => buildingID = id.ToLower();
-
-        public bool SetCurrentState(string state)
-        {
-            string loweredState = state.ToLower();
-
-            if (currentState == loweredState) return true; // No change
-
-            if (loweredState == "fire alarm" || loweredState == "fire drill")
+            if (_currentState.ToLower() == newState)
             {
-                previousState = currentState; // Save the current state to return to it later (History state)
-            }
-            else if (!stateTransitions.ContainsKey(currentState) || !stateTransitions[currentState].Contains(loweredState))
-            {
-                return false; // Invalid transition for normal states
+                return true;
             }
 
-            switch (loweredState)
+            if (!_validStates.Contains(newState) || !IsValidTransition(newState))
             {
-                case "closed":
-                    doorManager?.LockAllDoors();
-                    lightManager?.SetAllLights(false);
-                    break;
-                case "open":
-                    var doorsOpened = doorManager?.OpenAllDoors() ?? false;
-                    if (!doorsOpened)
-                    {
-                        return false; // Failed to open doors, remain in current state
-                    }
-                    break;
-                case "fire alarm":
-                    ExecuteFireAlarmActions();
-                    break;
-                case "fire drill":
-                    // For fire drill, there might be specific actions to add here
-                    break;
-                case "out of hours":
-                    // Optional: Add any specific actions for transitioning to 'out of hours'
-                    break;
-                case "history":
-                    // Transition to the 'History' state (return to previous state)
-                    currentState = previousState;
-                    return SetCurrentState(previousState); // Recursive call to set the previous state
+                return false;
             }
 
-            currentState = loweredState;
+            if (_validStates.Contains(_currentState) && (newState == "fire drill" || newState == "fire alarm"))
+            {
+                _historyState = _currentState;
+            }
+
+            if (_currentState == "fire drill" || _currentState == "fire alarm")
+            {
+                newState = _historyState;
+            }
+
+            if (!ApplyStateTransitionEffects(newState))
+            {
+                return false;
+            }
+
+            _currentState = newState;
             return true;
         }
 
-        private void ExecuteFireAlarmActions()
+
+        private bool IsValidTransition(string newState)
         {
-            fireAlarmManager?.SetAlarm(true);
-            doorManager?.OpenAllDoors();
-            lightManager?.SetAllLights(true);
+            if (_validStates.Contains(newState))
+            {
+                switch (_currentState)
+                {
+                    case "closed":
+                        return newState == "out of hours" || newState == "fire drill" || newState == "fire alarm";
+                    case "out of hours":
+                        return newState == "open" || newState == "closed" || newState == "fire drill" || newState == "fire alarm";
+                    case "open":
+                        return newState == "out of hours" || newState == "fire drill" || newState == "fire alarm";
+                    case "fire drill":
+                    case "fire alarm":
+                        return newState == _historyState;
+                    default:
+                        return false;
+                }
+            }
+            return false;
+        }
+
+
+
+        private bool ApplyStateTransitionEffects(string newState)
+        {
             try
             {
-                webService?.LogFireAlarm("fire alarm");
+                switch (newState)
+                {
+                    case "open":
+                        if (_doorManager == null || !_doorManager.OpenAllDoors())
+                        {
+                            return false;
+                        }
+                        break;
+                    case "closed":
+                        _doorManager?.LockAllDoors();
+                        _lightManager?.SetAllLights(false);
+                        break;
+                    case "out of hours":
+                        break;
+                    case "fire drill":
+                        _fireAlarmManager?.SetAlarm(false);
+                        _doorManager?.OpenAllDoors();
+                        _lightManager?.SetAllLights(true);
+                        break;
+                    case "fire alarm":
+                        _fireAlarmManager?.SetAlarm(true);
+                        _doorManager?.OpenAllDoors();
+                        _lightManager?.SetAllLights(true);
+
+                        try
+                        {
+                            _webService?.LogFireAlarm("fire alarm");
+                        }
+                        catch (Exception logEx)
+                        {
+                            _emailService?.SendMail("smartbuilding@uclan.ac.uk", "failed to log alarm", logEx.Message);
+                        }
+                        break;
+                }
+                _currentState = newState;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                emailService?.SendMail("smartbuilding@uclan.ac.uk", "failed to log alarm", ex.Message);
+                return false;
             }
+            return true;
         }
+
+
 
         public string GetStatusReport()
         {
-            var lightStatus = lightManager?.GetStatus();
-            var doorStatus = doorManager?.GetStatus();
-            var fireAlarmStatus = fireAlarmManager?.GetStatus();
+            var statusBuilder = new StringBuilder();
+            var faultyDevices = new List<string>();
 
-            var statuses = new[] { lightStatus, doorStatus, fireAlarmStatus };
-            var faults = statuses.Where(s => s?.Contains("FAULT") == true).ToList();
-            var faultDevices = faults.Select(s => s.Split(',')[0]);
-
-            if (faults.Any())
+            string lightStatus = _lightManager?.GetStatus();
+            if (!string.IsNullOrWhiteSpace(lightStatus))
             {
-                webService?.LogEngineerRequired(string.Join(",", faultDevices) + ",");
+                statusBuilder.Append(lightStatus);
+                if (lightStatus.Contains("FAULT"))
+                {
+                    faultyDevices.Add("Lights");
+                }
             }
 
-            return string.Join(",", statuses);
-        }
 
-        private bool IsInitialStateValid(string startState) => new[] { "closed", "out of hours", "open" }.Contains(startState);
+            string doorStatus = _doorManager?.GetStatus();
+            if (!string.IsNullOrWhiteSpace(doorStatus))
+            {
+                statusBuilder.Append(doorStatus);
+                if (doorStatus.Contains("FAULT"))
+                {
+                    faultyDevices.Add("Doors");
+                }
+            }
+
+            string fireAlarmStatus = _fireAlarmManager?.GetStatus();
+            if (!string.IsNullOrWhiteSpace(fireAlarmStatus))
+            {
+                statusBuilder.Append(fireAlarmStatus);
+                if (fireAlarmStatus.Contains("FAULT"))
+                {
+                    faultyDevices.Add("FireAlarm");
+                }
+            }
+
+
+            if (faultyDevices.Any())
+            {
+                string faultReport = string.Join(",", faultyDevices) + ",";
+                _webService?.LogEngineerRequired(faultReport);
+            }
+
+            return statusBuilder.ToString();
+        }
 
     }
 }
