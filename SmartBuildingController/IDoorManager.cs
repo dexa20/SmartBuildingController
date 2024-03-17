@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SmartBuildingController
+﻿namespace SmartBuildingController
 {
-    public interface IDoorManager : IManager
+    public interface IDoorManager
     {
         bool OpenDoor(int doorID);
         bool LockDoor(int doorID);
         bool OpenAllDoors();
         bool LockAllDoors();
+        string GetStatus();
     }
 }

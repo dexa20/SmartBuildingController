@@ -1,15 +1,9 @@
-﻿using SmartBuildingController;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace SmartBuildingController
+﻿namespace SmartBuildingController
 {
-    public interface ILightManager : IManager
+    public interface ILightManager
     {
         void SetLight(bool isOn, int lightID);
         void SetAllLights(bool isOn);
+        string GetStatus();
     }
 }
