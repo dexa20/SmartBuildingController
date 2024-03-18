@@ -149,11 +149,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Dinira Pathirana\\Documents\\000 Files\\UCL\\Year 2\\Semester 1\\Assignments\\Software Development CO2401\\codes\\New folder\\SmartBuildingController\\SmartBuildingController\\SmartBuildingController.csproj",
+      "projectUniqueName": "C:\\Users\\Dinira Pathirana\\Documents\\000 Files\\UCL\\Year 2\\Semester 1\\Assignments\\Software Development CO2401\\codes\\SmartBuildingController\\SmartBuildingController\\SmartBuildingController.csproj",
       "projectName": "SmartBuildingController",
-      "projectPath": "C:\\Users\\Dinira Pathirana\\Documents\\000 Files\\UCL\\Year 2\\Semester 1\\Assignments\\Software Development CO2401\\codes\\New folder\\SmartBuildingController\\SmartBuildingController\\SmartBuildingController.csproj",
+      "projectPath": "C:\\Users\\Dinira Pathirana\\Documents\\000 Files\\UCL\\Year 2\\Semester 1\\Assignments\\Software Development CO2401\\codes\\SmartBuildingController\\SmartBuildingController\\SmartBuildingController.csproj",
       "packagesPath": "C:\\Users\\Dinira Pathirana\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Dinira Pathirana\\Documents\\000 Files\\UCL\\Year 2\\Semester 1\\Assignments\\Software Development CO2401\\codes\\New folder\\SmartBuildingController\\SmartBuildingController\\obj\\",
+      "outputPath": "C:\\Users\\Dinira Pathirana\\Documents\\000 Files\\UCL\\Year 2\\Semester 1\\Assignments\\Software Development CO2401\\codes\\SmartBuildingController\\SmartBuildingController\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

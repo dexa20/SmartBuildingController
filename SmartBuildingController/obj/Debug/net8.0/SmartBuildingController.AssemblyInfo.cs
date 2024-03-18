@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SmartBuildingController")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6e118bea5c8fea0881747b22ebd463dea68924b0")]
 [assembly: System.Reflection.AssemblyProductAttribute("SmartBuildingController")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SmartBuildingController")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
